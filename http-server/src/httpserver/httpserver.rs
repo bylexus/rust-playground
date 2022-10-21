@@ -44,12 +44,17 @@ impl HttpServer {
     fn handle_incoming_stream(&self, mut stream: TcpStream) {
         self.thread_pool.execute(move |thread_id| {
             let request = Request::from_tcp_stream(&stream);
+
+            request.params.pairs().for_each(|(key, value)| {
+                eprintln!("URL Param: {}: {}", key, value);
+            });
+
             // TODO: read further request in the SAME stream: maybe this is a
             // keep-alive-connection.
 
             // stream.shutdown(std::net::Shutdown::Read).unwrap();
 
-            eprintln!("Thread {} handles Request: {:?}", thread_id, request);
+            eprintln!("Thread {} handles the Request", thread_id);
 
             let mut response = String::from("HTTP/1.1 200 OK \r\n\r\n");
             response += format!("{:?} request read.\n", request.method).as_str();

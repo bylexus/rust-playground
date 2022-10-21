@@ -6,6 +6,8 @@ use std::{
 
 use crate::httpserver::HeaderMap;
 
+use super::RequestParams;
+
 #[derive(Debug)]
 pub enum HttpVerb {
     GET,
@@ -37,12 +39,12 @@ impl HttpVerb {
     }
 }
 
-#[derive(Debug)]
 pub struct Request {
     pub headers: HeaderMap,
     pub method: HttpVerb,
     pub url: String,
     pub body: Option<String>,
+	pub params: RequestParams,
 }
 
 impl Request {
@@ -75,8 +77,9 @@ impl Request {
         let mut request = Request {
             headers: header_map,
             method: verb,
-            url,
+            url:String::from(&url),
             body: None,
+			params: RequestParams::from_request_url(&url)
         };
         // eprintln!("Headers: {:#?}\n", request.headers);
 
