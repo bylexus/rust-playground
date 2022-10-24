@@ -39,4 +39,14 @@ impl RequestParams {
 			None => default
 		}
 	}
+
+	pub fn get_i64(&self, key: &str) -> Option<i64>  {
+		match self.params.contains_key(key) {
+			true => match str::parse::<i64>(self.get(key, "")) {
+				Ok(nr) => Some(nr),
+				Err(_) => None
+			},
+			false => None
+		}
+	}
 }

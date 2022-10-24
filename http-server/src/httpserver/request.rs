@@ -1,12 +1,16 @@
+use std::error::Error;
+use std::fmt::Display;
+use std::io::ErrorKind;
 use std::str;
 use std::{
     io::{BufRead, BufReader, Read},
     net::TcpStream,
 };
 
-use crate::httpserver::HeaderMap;
+use crate::httpserver::{HeaderMap, RequestParams};
+use http_server::utils::BufReaderExt;
 
-use super::RequestParams;
+use super::HTTPStatusCode;
 
 #[derive(Debug)]
 pub enum HttpVerb {
@@ -42,25 +46,35 @@ impl HttpVerb {
 pub struct Request {
     pub headers: HeaderMap,
     pub method: HttpVerb,
+    pub full_url: String,
     pub url: String,
     pub body: Option<String>,
-	pub params: RequestParams,
+    pub params: RequestParams,
 }
 
 impl Request {
-    pub fn from_tcp_stream(stream: &TcpStream) -> Request {
+    /// Creates a Request from the given stream. As this stream is possibly from a keep-alive
+    /// connection, we also return the still opened Buffered Reader, so that another request
+    /// can be established from the already read-in-progress buffer.
+    pub fn from_tcp_stream<'a>(
+        stream: &'a TcpStream,
+    ) -> Result<(Request, BufReader<&'a TcpStream>), HTTPStatusCode> {
         let mut buf_reader = BufReader::new(stream);
-        let mut http_request_line = String::new();
         let mut header_buf = String::new();
         let mut headers = Vec::new();
         let mut verb = HttpVerb::UNKNOWN;
         let mut url = String::new();
 
         // read 1st line: http request and verb:
-        if let Ok(_) = buf_reader.read_line(&mut http_request_line) {
-            let line = http_request_line.trim();
-            (verb, url) = Request::parse_http_request_line(&line);
-        }
+        let line_buf = match buf_reader.read_max_until(10, 8192) {
+            Ok(buf) => buf,
+            Err(err) => match err.kind() {
+                ErrorKind::UnexpectedEof => return Err(HTTPStatusCode::ClientError(413)),
+                _ => return Err(HTTPStatusCode::ServerError(500))
+            }
+        };
+        let line = String::from_utf8(line_buf).unwrap_or(String::new());
+        (verb, url) = Request::parse_http_request_line(line.trim());
 
         // Read header lines:
         while let Ok(_) = buf_reader.read_line(&mut header_buf) {
@@ -77,9 +91,14 @@ impl Request {
         let mut request = Request {
             headers: header_map,
             method: verb,
-            url:String::from(&url),
+            full_url: String::from(&url),
+            // url only contains the url part without parameters:
+            url: String::from(match url.split_once('?') {
+                Some(parts) => parts.0,
+                None => &url,
+            }),
             body: None,
-			params: RequestParams::from_request_url(&url)
+            params: RequestParams::from_request_url(&url),
         };
         // eprintln!("Headers: {:#?}\n", request.headers);
 
@@ -107,7 +126,7 @@ impl Request {
             // TODO: read
         }
 
-        request
+        Ok((request, buf_reader))
     }
 
     fn parse_http_request_line(line: &str) -> (HttpVerb, String) {

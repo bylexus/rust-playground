@@ -1,6 +1,6 @@
 use http_server::utils::threadpool::ThreadPool;
 
-use crate::httpserver::Request;
+use crate::httpserver::{Request, HTTPStatusCode};
 
 use std::{
     error::Error,
@@ -43,25 +43,30 @@ impl HttpServer {
 
     fn handle_incoming_stream(&self, mut stream: TcpStream) {
         self.thread_pool.execute(move |thread_id| {
-            let request = Request::from_tcp_stream(&stream);
+            eprintln!("Thread {} handles the Request", thread_id);
 
-            request.params.pairs().for_each(|(key, value)| {
-                eprintln!("URL Param: {}: {}", key, value);
-            });
+            // let (request, buffered_reader) = Request::from_tcp_stream(&stream);
+            match Request::from_tcp_stream(&stream) {
+                Ok((request, buffered_reader)) => {
+                    let code = HTTPStatusCode::Success(200);
+                    let mut response = String::from(format!("HTTP/1.1 {} {} \r\n\r\n", code.code(), code.message()));
+                    response += format!("{:?} request read.\n", request.method).as_str();
+                    if let Some(body) = request.body {
+                        response += format!("Body:\n{}\n", body).as_str();
+                    }
+                    stream.write_all(response.as_bytes()).unwrap();
+                }
+                Err(http_err) => {
+                    let response = String::from(format!("HTTP/1.1 {} {} \r\n\r\n", http_err.code(), http_err.message()));
+                    stream.write_all(response.as_bytes()).unwrap();
+
+                }
+            };
 
             // TODO: read further request in the SAME stream: maybe this is a
             // keep-alive-connection.
 
             // stream.shutdown(std::net::Shutdown::Read).unwrap();
-
-            eprintln!("Thread {} handles the Request", thread_id);
-
-            let mut response = String::from("HTTP/1.1 200 OK \r\n\r\n");
-            response += format!("{:?} request read.\n", request.method).as_str();
-            if let Some(body) = request.body {
-                response += format!("Body:\n{}\n", body).as_str();
-            }
-            stream.write_all(response.as_bytes()).unwrap();
         });
     }
 }

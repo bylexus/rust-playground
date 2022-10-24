@@ -1,6 +1,6 @@
 use std::{
     sync::{
-        mpsc::{self},
+        mpsc,
         Arc, Mutex,
     },
     thread::{self, JoinHandle},
@@ -13,13 +13,13 @@ use std::{
 // thread_pool.execute(|id| { print!("Hi, I'm Thread {id}."});
 type Job = Box<dyn FnOnce(usize) + Send + 'static>;
 
-pub struct Worker {
+struct Worker {
     id: usize,
     thread: Option<JoinHandle<()>>,
 }
 
 impl Worker {
-    pub fn new(id: usize, receiver: Arc<Mutex<mpsc::Receiver<Job>>>) -> Worker {
+    fn new(id: usize, receiver: Arc<Mutex<mpsc::Receiver<Job>>>) -> Worker {
         let mut w = Worker { id, thread: None };
         w.start(receiver);
 
@@ -61,7 +61,7 @@ impl Worker {
 }
 
 pub struct ThreadPool {
-    nr_of_threads: usize,
+    _nr_of_threads: usize,
     sender: Option<mpsc::Sender<Job>>,
     workers: Vec<Option<Worker>>,
 }
@@ -81,7 +81,7 @@ impl ThreadPool {
         }
 
         ThreadPool {
-            nr_of_threads: match nr_of_threads {
+            _nr_of_threads: match nr_of_threads {
                 0 => 1,
                 _ => nr_of_threads,
             },
