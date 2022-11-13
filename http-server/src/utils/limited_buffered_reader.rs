@@ -7,7 +7,7 @@ pub trait BufReaderExt: Read {
     fn read_max_until(&mut self, byte: u8, max_bytes: usize) -> Result<Vec<u8>>;
 }
 
-impl BufReaderExt for BufReader<&TcpStream> {
+impl BufReaderExt for BufReader<TcpStream> {
     fn read_max_until(&mut self, byte: u8, max_bytes: usize) -> Result<Vec<u8>> {
         let mut remaining_bytes = max_bytes;
         let mut byte_buf = [0u8];

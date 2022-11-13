@@ -1,4 +1,5 @@
-use crate::httpserver::{request_handler::RequestHander, HTTPStatusCode, Request};
+use crate::httpserver::{HTTPStatusCode, Request};
+use http_server::utils::logging::LogSeverity;
 use http_server::utils::threadpool::ThreadPool;
 
 use std::error::Error as StdError;
@@ -46,18 +47,30 @@ impl HttpServer {
         self.thread_pool.execute(move |thread_id| {
             eprintln!("Thread {} handles the Request", thread_id);
 
-            let handler = RequestHander::from_tcp_stream(&stream);
+            // let handler = RequestHander::from_tcp_stream(&stream);
+
+            let request = Request::from_tcp_stream(stream);
+            match request {
+                Ok(mut request) => request.handle(),
+                Err(e) => {
+                    Self::log(e.message(), LogSeverity::ERROR)
+                }
+            }
 
             // from_tcp_stream takes ownership of the stream, while handle() gives it
             // back after its work is done:
-            let buf_reader = handler.handle();
+            // let buf_reader = handler.handle();
 
             // TODO: read further request in the SAME stream: maybe this is a
             // keep-alive-connection.
             // we therefore get the buf_reader back from the handler.
             // for now, we just stop here.
 
-            stream.shutdown(std::net::Shutdown::Read).unwrap();
+            // stream.shutdown(std::net::Shutdown::Read).unwrap();
         });
+    }
+
+    fn log(msg: &str, severity: LogSeverity) {
+        eprintln!("{}: {}\n", severity, msg);
     }
 }

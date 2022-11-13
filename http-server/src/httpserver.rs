@@ -3,7 +3,6 @@ mod httpserver;
 mod request;
 mod request_params;
 mod http_status_codes;
-mod request_handler;
 
 
 pub use httpserver::HttpServer;
