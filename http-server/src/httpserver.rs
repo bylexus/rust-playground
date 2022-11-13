@@ -3,13 +3,14 @@ mod httpserver;
 mod request;
 mod request_params;
 mod http_status_codes;
+mod request_handler;
 
 
-pub use header_map::HeaderMap;
 pub use httpserver::HttpServer;
-pub use request::Request;
-pub use request_params::RequestParams;
-pub use http_status_codes::HTTPStatusCode;
+use header_map::HeaderMap;
+use request::Request;
+use request_params::RequestParams;
+use http_status_codes::HTTPStatusCode;
 
 #[cfg(test)]
 mod request_params_test;

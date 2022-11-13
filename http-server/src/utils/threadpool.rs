@@ -11,7 +11,7 @@ use std::{
 // reference.
 // so use it like this:
 // thread_pool.execute(|id| { print!("Hi, I'm Thread {id}."});
-type Job = Box<dyn FnOnce(usize) + Send + 'static>;
+type Job = Box<dyn FnOnce(usize) + Send + Sync + 'static>;
 
 struct Worker {
     id: usize,
@@ -92,7 +92,7 @@ impl ThreadPool {
 
     pub fn execute<T>(&self, f: T)
     where
-        T: FnOnce(usize) + Send + 'static,
+        T: FnOnce(usize) + Send + Sync + 'static,
     {
         // send new job by using the channel:
         self.sender.as_ref().unwrap().send(Box::new(f)).unwrap();
